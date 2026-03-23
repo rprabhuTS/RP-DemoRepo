@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Transmit Security Demo</title>
+  <link rel="stylesheet" href="/css/styles.css">
+</head>
+<body>
+  <div class="app-container">
+
+    <!-- Header -->
+    <header class="app-header">
+      <a href="/" class="logo">
+        <span class="logo-icon">TS</span>
+        Transmit Security Demo
+      </a>
+      <div class="header-actions">
+        <span class="header-badge">B2C Identity</span>
+        <button id="logoutBtn" class="btn btn-sm btn-danger hidden" onclick="logout()">Logout</button>
+      </div>
+    </header>
+
+    <!-- Auth View -->
+    <main id="authView" class="main-content">
+      <div class="auth-container">
+        <div class="auth-card">
+          <div class="auth-card-header">
+            <h1 id="authTitle">Welcome Back</h1>
+            <p id="authSubtitle">Choose your preferred authentication method</p>
+          </div>
+          <div class="auth-card-body">
+
+            <!-- Alert -->
+            <div id="authAlert" class="alert"></div>
+
+            <!-- Auth Method Tabs -->
+            <div class="auth-tabs">
+              <button class="auth-tab active" data-tab="emailOtp" onclick="switchTab('emailOtp')">
+                <span class="auth-tab-icon">&#9993;</span>
+                Email OTP
+              </button>
+              <button class="auth-tab" data-tab="password" onclick="switchTab('password')">
+                <span class="auth-tab-icon">&#128274;</span>
+                Password
+              </button>
+              <button class="auth-tab" data-tab="passkey" onclick="switchTab('passkey')">
+                <span class="auth-tab-icon">&#128273;</span>
+                Passkey
+              </button>
+            </div>
+
+            <!-- Email OTP Panel -->
+            <div id="panel-emailOtp" class="auth-panel active">
+              <!-- Step 1: Enter Email -->
+              <div id="otpStep1">
+                <div class="form-group">
+                  <label class="form-label" for="otpEmail">Email Address</label>
+                  <input type="email" id="otpEmail" class="form-input" placeholder="you@company.com" autocomplete="email">
+                </div>
+                <button class="btn btn-primary" onclick="sendEmailOtp()" id="sendOtpBtn">
+                  Send One-Time Code
+                </button>
+              </div>
+              <!-- Step 2: Enter OTP -->
+              <div id="otpStep2" class="hidden">
+                <p style="text-align:center; font-size:14px; color:var(--ts-gray-600); margin-bottom:8px;">
+                  Enter the code sent to <strong id="otpSentEmail"></strong>
+                </p>
+                <div class="otp-input-group">
+                  <input type="text" maxlength="1" class="otp-digit" data-index="0" inputmode="numeric">
+                  <input type="text" maxlength="1" class="otp-digit" data-index="1" inputmode="numeric">
+                  <input type="text" maxlength="1" class="otp-digit" data-index="2" inputmode="numeric">
+                  <input type="text" maxlength="1" class="otp-digit" data-index="3" inputmode="numeric">
+                  <input type="text" maxlength="1" class="otp-digit" data-index="4" inputmode="numeric">
+                  <input type="text" maxlength="1" class="otp-digit" data-index="5" inputmode="numeric">
+                </div>
+                <button class="btn btn-primary" onclick="validateEmailOtp()" id="validateOtpBtn">
+                  Verify Code
+                </button>
+                <div class="divider">or</div>
+                <button class="btn btn-secondary" onclick="resetOtpFlow()">
+                  Use a different email
+                </button>
+              </div>
+            </div>
+
+            <!-- Password Panel -->
+            <div id="panel-password" class="auth-panel">
+              <!-- Login Form -->
+              <div id="passwordLoginForm">
+                <div class="form-group">
+                  <label class="form-label" for="pwEmail">Email Address</label>
+                  <input type="email" id="pwEmail" class="form-input" placeholder="you@company.com" autocomplete="email">
+                </div>
+                <div class="form-group">
+                  <label class="form-label" for="pwPassword">Password</label>
+                  <input type="password" id="pwPassword" class="form-input" placeholder="Enter your password" autocomplete="current-password">
+                </div>
+                <button class="btn btn-primary" onclick="passwordLogin()" id="pwLoginBtn">
+                  Sign In
+                </button>
+                <div class="toggle-link">
+                  Don't have an account? <a href="#" onclick="toggleRegister(true); return false;">Create one</a>
+                </div>
+              </div>
+              <!-- Register Form -->
+              <div id="passwordRegisterForm" class="hidden">
+                <div class="form-group">
+                  <label class="form-label" for="regName">Full Name</label>
+                  <input type="text" id="regName" class="form-input" placeholder="John Doe" autocomplete="name">
+                </div>
+                <div class="form-group">
+                  <label class="form-label" for="regEmail">Email Address</label>
+                  <input type="email" id="regEmail" class="form-input" placeholder="you@company.com" autocomplete="email">
+                </div>
+                <div class="form-group">
+                  <label class="form-label" for="regPassword">Password</label>
+                  <input type="password" id="regPassword" class="form-input" placeholder="Min 8 characters" autocomplete="new-password">
+                </div>
+                <button class="btn btn-primary" onclick="passwordRegister()" id="regBtn">
+                  Create Account
+                </button>
+                <div class="toggle-link">
+                  Already have an account? <a href="#" onclick="toggleRegister(false); return false;">Sign in</a>
+                </div>
+              </div>
+            </div>
+
+            <!-- Passkey Panel -->
+            <div id="panel-passkey" class="auth-panel">
+              <div style="text-align:center; padding:20px 0;">
+                <div style="font-size:48px; margin-bottom:16px;">&#128273;</div>
+                <h3 style="font-size:18px; font-weight:700; color:var(--ts-navy); margin-bottom:8px;">
+                  Passkey Authentication
+                </h3>
+                <p style="font-size:14px; color:var(--ts-gray-600); margin-bottom:24px;">
+                  Sign in using your device biometrics (fingerprint, face recognition) or a hardware security key. Fast, secure, and phishing-resistant.
+                </p>
+                <button class="btn btn-primary" onclick="passkeyAuth()" id="passkeyBtn">
+                  Sign in with Passkey
+                </button>
+                <p style="font-size:12px; color:var(--ts-gray-400); margin-top:16px;">
+                  You can register a passkey after signing in with another method.
+                </p>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+        <footer class="app-footer">
+          Powered by <a href="https://transmitsecurity.com" target="_blank">Transmit Security</a> &middot;
+          <a href="https://developer.transmitsecurity.com" target="_blank">Developer Docs</a> &middot;
+          <a href="https://portal.transmitsecurity.io" target="_blank">Admin Portal</a>
+        </footer>
+      </div>
+    </main>
+
+    <!-- Dashboard View -->
+    <div id="dashboardView" class="hidden">
+      <div class="dashboard">
+
+        <!-- Welcome Banner -->
+        <div class="welcome-banner">
+          <h1>Hello, <span id="userName">User</span></h1>
+          <p>You're authenticated via Transmit Security's B2C Identity platform.</p>
+          <div class="auth-badge" id="authBadge">
+            &#10003; Authenticated via Email OTP
+          </div>
+        </div>
+
+        <div class="dashboard-grid">
+
+          <!-- User Profile -->
+          <div class="card">
+            <div class="card-header">
+              <h2>User Profile</h2>
+              <button class="btn btn-sm btn-outline" onclick="refreshProfile()">Refresh</button>
+            </div>
+            <div class="card-body" id="profileBody">
+              <div class="profile-field">
+                <span class="profile-field-label">User ID</span>
+                <span class="profile-field-value" id="profileUserId">-</span>
+              </div>
+              <div class="profile-field">
+                <span class="profile-field-label">Email</span>
+                <span class="profile-field-value" id="profileEmail">-</span>
+              </div>
+              <div class="profile-field">
+                <span class="profile-field-label">Name</span>
+                <span class="profile-field-value" id="profileName">-</span>
+              </div>
+              <div class="profile-field">
+                <span class="profile-field-label">Auth Method</span>
+                <span class="profile-field-value" id="profileAuthMethod">-</span>
+              </div>
+              <div class="profile-field">
+                <span class="profile-field-label">Status</span>
+                <span class="profile-field-value" style="color:var(--ts-green);" id="profileStatus">Active</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Authentication Methods -->
+          <div class="card">
+            <div class="card-header">
+              <h2>Auth Methods</h2>
+            </div>
+            <div class="card-body">
+              <div class="auth-method-item">
+                <div class="auth-method-icon email">&#9993;</div>
+                <div class="auth-method-info">
+                  <h4>Email OTP</h4>
+                  <p>One-time passcode via email</p>
+                </div>
+                <span class="auth-method-status active">Active</span>
+              </div>
+              <div class="auth-method-item">
+                <div class="auth-method-icon password">&#128274;</div>
+                <div class="auth-method-info">
+                  <h4>Password</h4>
+                  <p>Traditional password login</p>
+                </div>
+                <span class="auth-method-status available" id="passwordStatus">Available</span>
+              </div>
+              <div class="auth-method-item">
+                <div class="auth-method-icon passkey">&#128273;</div>
+                <div class="auth-method-info">
+                  <h4>Passkey</h4>
+                  <p>Biometric / hardware key</p>
+                </div>
+                <button class="btn btn-sm btn-outline" onclick="registerPasskey()" id="registerPasskeyBtn">Register</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- API Activity Log -->
+          <div class="card card-full">
+            <div class="card-header">
+              <h2>API Activity Log</h2>
+              <button class="btn btn-sm btn-secondary" onclick="clearApiLog()">Clear</button>
+            </div>
+            <div class="card-body">
+              <div class="api-log" id="apiLog">
+                <p style="text-align:center; color:var(--ts-gray-400); font-size:13px; padding:20px;">
+                  API calls will appear here as you interact with the app.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Token Viewer -->
+          <div class="card card-full">
+            <div class="card-header">
+              <h2>Session Tokens</h2>
+              <span class="header-badge">JWT</span>
+            </div>
+            <div class="card-body">
+              <p style="font-size:13px; color:var(--ts-gray-600); margin-bottom:12px;">
+                Decoded ID token payload from your current session:
+              </p>
+              <div class="token-display" id="tokenDisplay">
+                Tokens will be displayed after authentication.
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Transmit Security Platform SDK -->
+  <script src="https://platform-websdk.transmitsecurity.io/platform-websdk/2.x/ts-platform-websdk.js" defer id="ts-platform-script"></script>
+  <script src="/js/app.js"></script>
+</body>
+</html>
