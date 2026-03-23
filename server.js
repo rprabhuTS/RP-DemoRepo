@@ -339,10 +339,11 @@ app.post('/api/auth/password/login', async (req, res) => {
 
 // ─── WebAuthn / Passkeys ────────────────────────────────────────────────────
 
-app.post('/api/auth/webauthn/register/init', requireAuth, async (req, res) => {
+// Complete passkey registration (SDK handles the browser ceremony, backend completes it)
+app.post('/api/auth/webauthn/register/complete', requireAuth, async (req, res) => {
   try {
-    const clientToken = await getClientAccessToken();
     const userToken = req.session.tokens?.access_token;
+    const clientToken = await getClientAccessToken();
 
     const response = await fetch(`${TS_API_BASE}/cis/v1/auth/webauthn/register`, {
       method: 'POST',
@@ -351,34 +352,8 @@ app.post('/api/auth/webauthn/register/init', requireAuth, async (req, res) => {
         'Authorization': `Bearer ${userToken || clientToken}`
       },
       body: JSON.stringify({
-        user_id: req.session.user.userId
+        webauthn_encoded_result: req.body.webauthn_encoded_result
       })
-    });
-
-    const data = await response.json();
-    if (!response.ok) {
-      return res.status(response.status).json({ error: data.message || 'WebAuthn registration init failed', details: data });
-    }
-
-    res.json(data);
-  } catch (err) {
-    console.error('WebAuthn register init error:', err);
-    res.status(500).json({ error: err.message });
-  }
-});
-
-app.post('/api/auth/webauthn/register/complete', requireAuth, async (req, res) => {
-  try {
-    const clientToken = await getClientAccessToken();
-    const userToken = req.session.tokens?.access_token;
-
-    const response = await fetch(`${TS_API_BASE}/cis/v1/auth/webauthn/register/result`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${userToken || clientToken}`
-      },
-      body: JSON.stringify(req.body)
     });
 
     const data = await response.json();
@@ -389,6 +364,47 @@ app.post('/api/auth/webauthn/register/complete', requireAuth, async (req, res) =
     res.json({ success: true, message: 'Passkey registered successfully' });
   } catch (err) {
     console.error('WebAuthn register complete error:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Authenticate with passkey (SDK handles browser ceremony, backend exchanges for tokens)
+app.post('/api/auth/webauthn/authenticate', async (req, res) => {
+  try {
+    const clientToken = await getClientAccessToken();
+
+    const response = await fetch(`${TS_API_BASE}/cis/v1/auth/webauthn/authenticate`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${clientToken}`
+      },
+      body: JSON.stringify({
+        webauthn_encoded_result: req.body.webauthn_encoded_result
+      })
+    });
+
+    const data = await response.json();
+    if (!response.ok) {
+      return res.status(response.status).json({ error: data.message || 'Passkey authentication failed', details: data });
+    }
+
+    const userInfo = decodeJwt(data.id_token);
+    req.session.user = {
+      userId: userInfo.sub || data.user_id,
+      email: userInfo.email || '',
+      name: userInfo.name || userInfo.email || '',
+      authMethod: 'passkey'
+    };
+    req.session.tokens = {
+      access_token: data.access_token,
+      id_token: data.id_token,
+      refresh_token: data.refresh_token
+    };
+
+    res.json({ success: true, user: req.session.user });
+  } catch (err) {
+    console.error('WebAuthn authenticate error:', err);
     res.status(500).json({ error: err.message });
   }
 });

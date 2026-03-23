@@ -222,14 +222,16 @@ async function passkeyAuth() {
   hideAlert();
 
   try {
-    const webauthnResult = await window.tsPlatform.webauthn.authenticate.modal();
-    logApi('POST', '/webauthn/authenticate', 200);
+    // Prepare and execute passkey authentication via SDK
+    await window.tsPlatform.webauthn.preparePasskeyAuthentication();
+    const webauthnResult = await window.tsPlatform.webauthn.executePasskeyAuthentication();
+    logApi('POST', '/webauthn/authenticate (SDK)', 200);
 
-    // Send result to backend for validation
+    // Send encoded result to backend for token exchange
     const res = await apiCall('/api/auth/webauthn/authenticate', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(webauthnResult)
+      body: JSON.stringify({ webauthn_encoded_result: webauthnResult.result })
     });
 
     const data = await res.json();
@@ -239,7 +241,11 @@ async function passkeyAuth() {
     } else {
       showAlert(data.error || 'Passkey authentication failed', 'error');
     }
+
+    // Reset SDK state after flow
+    window.tsPlatform.webauthn.reset();
   } catch (err) {
+    window.tsPlatform.webauthn.reset();
     if (err.name === 'NotAllowedError') {
       showAlert('Passkey request was cancelled.', 'error');
     } else {
@@ -259,17 +265,18 @@ async function registerPasskey() {
   setLoading(btn, true);
 
   try {
-    const webauthnResult = await window.tsPlatform.webauthn.register(
-      currentUser.name || currentUser.email,
-      currentUser.email
+    // Prepare and execute WebAuthn registration via SDK
+    await window.tsPlatform.webauthn.prepareWebauthnRegistration(
+      currentUser.name || currentUser.email
     );
-    logApi('POST', '/webauthn/register (client)', 200);
+    const webauthnResult = await window.tsPlatform.webauthn.executeWebauthnRegistration();
+    logApi('POST', '/webauthn/register (SDK)', 200);
 
-    // Send to backend
+    // Send encoded result to backend to complete registration
     const res = await apiCall('/api/auth/webauthn/register/complete', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(webauthnResult)
+      body: JSON.stringify({ webauthn_encoded_result: webauthnResult.result })
     });
 
     const data = await res.json();
@@ -280,7 +287,10 @@ async function registerPasskey() {
     } else {
       showDashboardAlert(data.error || 'Passkey registration failed', 'error');
     }
+
+    window.tsPlatform.webauthn.reset();
   } catch (err) {
+    window.tsPlatform.webauthn.reset();
     showDashboardAlert('Passkey registration cancelled or failed.', 'error');
   }
 
