@@ -190,7 +190,8 @@ app.post('/api/auth/email-otp-backend/send', async (req, res) => {
     const { email } = req.body;
     const clientToken = await getClientAccessToken();
 
-    const response = await fetch(`${TS_API_BASE}/cis/v1/auth/otp/send`, {
+    // Try to send OTP
+    let response = await fetch(`${TS_API_BASE}/cis/v1/auth/otp/send`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -203,7 +204,41 @@ app.post('/api/auth/email-otp-backend/send', async (req, res) => {
       })
     });
 
-    const data = await response.json();
+    let data = await response.json();
+
+    // If user not found, auto-register then retry
+    if (!response.ok && (data.message === 'User not found' || data.error_code === 'user_not_found')) {
+      const createRes = await fetch(`${TS_API_BASE}/cis/v1/users`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${clientToken}`
+        },
+        body: JSON.stringify({ email })
+      });
+
+      if (!createRes.ok) {
+        const createData = await createRes.json();
+        return res.status(createRes.status).json({ error: createData.message || 'Failed to create user', details: createData });
+      }
+
+      // Retry sending OTP after user creation
+      response = await fetch(`${TS_API_BASE}/cis/v1/auth/otp/send`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${clientToken}`
+        },
+        body: JSON.stringify({
+          channel: 'email',
+          identifier: email,
+          identifier_type: 'email'
+        })
+      });
+
+      data = await response.json();
+    }
+
     if (!response.ok) {
       return res.status(response.status).json({ error: data.message || 'Failed to send OTP', details: data });
     }
