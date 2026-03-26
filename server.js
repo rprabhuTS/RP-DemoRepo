@@ -96,8 +96,7 @@ app.post('/api/auth/email-otp/send', async (req, res) => {
       },
       body: JSON.stringify({
         email,
-        redirect_uri: `${process.env.APP_URL || `http://localhost:${PORT}`}/api/auth/callback`,
-        create_new_user: true
+        redirect_uri: `${process.env.APP_URL || `http://localhost:${PORT}`}/api/auth/callback`
       })
     });
 
@@ -200,8 +199,7 @@ app.post('/api/auth/email-otp-backend/send', async (req, res) => {
       body: JSON.stringify({
         channel: 'email',
         identifier: email,
-        identifier_type: 'email',
-        create_new_user: true
+        identifier_type: 'email'
       })
     });
 
